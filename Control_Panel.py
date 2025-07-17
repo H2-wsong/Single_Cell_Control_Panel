@@ -453,13 +453,13 @@ class MainWindow(QMainWindow):
         auto_flow_layout.addWidget(self.auto_update_interval_edit, 4, 3)
 
         auto_flow_layout.addWidget(QLabel("Temp Sensors for Avg:"), 5, 0)
-        temp_combo_layout = QHBoxLayout() # *** FIX: Layout for combo boxes
+        temp_combo_layout = QHBoxLayout()
         self.temp_sensor_1_combo = QComboBox()
-        self.temp_sensor_1_combo.addItems([f"A{i}" for i in range(4)])
+        self.temp_sensor_1_combo.addItems([f"A{i}" for i in range(5)])
         self.temp_sensor_1_combo.setCurrentIndex(0)
         temp_combo_layout.addWidget(self.temp_sensor_1_combo)
         self.temp_sensor_2_combo = QComboBox()
-        self.temp_sensor_2_combo.addItems([f"A{i}" for i in range(4)])
+        self.temp_sensor_2_combo.addItems([f"A{i}" for i in range(5)])
         self.temp_sensor_2_combo.setCurrentIndex(1)
         temp_combo_layout.addWidget(self.temp_sensor_2_combo)
         auto_flow_layout.addLayout(temp_combo_layout, 5, 1, 1, 2)
@@ -515,7 +515,7 @@ class MainWindow(QMainWindow):
         arduino_layout.addWidget(QLabel("Temperatures (°C):"), 2, 0)
         self.temp_display_labels = []
         temp_labels_layout = QHBoxLayout()
-        for i in range(4):
+        for i in range(5):
             label = QLabel(f"A{i}: N/A")
             self.temp_display_labels.append(label)
             temp_labels_layout.addWidget(label)
@@ -623,7 +623,7 @@ class MainWindow(QMainWindow):
 
     def update_arduino_status(self):
         if self.arduino_instance and self.is_arduino_connected:
-            for i in range(4):
+            for i in range(5):
                 temp = self.arduino_instance.get_temperature(i)
                 if temp is not None:
                     self.temp_display_labels[i].setText(f"A{i}: {temp:.2f}")

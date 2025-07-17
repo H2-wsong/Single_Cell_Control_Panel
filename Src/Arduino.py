@@ -1,3 +1,5 @@
+# Src/Arduino.py
+
 import serial
 import time
 
@@ -16,19 +18,16 @@ class ArduinoControl:
         """아두이노와 시리얼 포트 연결을 시도합니다."""
         try:
             self.ser = serial.Serial(self.port, self.baudrate, timeout=self.timeout)
-            # 아두이노 보드가 리셋된 후 시리얼 통신이 안정화될 때까지 대기
             time.sleep(2)
             if self.ser.is_open:
                 self.is_connected = True
                 print(f"Successfully connected to Arduino on {self.port}.")
-                # 아두이노로부터 초기 메시지를 읽어들여 연결 확인
                 ready_msg = self.ser.readline().decode('utf-8', errors='ignore').strip()
                 if "Ready" in ready_msg:
                     print(f"Arduino says: {ready_msg}")
                     return True
                 else:
                     print(f"Warning: Arduino did not send ready signal. Received: {ready_msg}")
-                    # 준비 신호가 없어도 연결은 된 것으로 간주할 수 있음
                     return True
         except serial.SerialException as e:
             print(f"Error connecting to Arduino on {self.port}: {e}")
@@ -41,7 +40,6 @@ class ArduinoControl:
         """아두이노와의 연결을 해제합니다."""
         if self.ser and self.ser.is_open:
             try:
-                # 연결 종료 전 릴레이를 안전한 상태(닫힘)로 변경
                 self.close_relay()
                 time.sleep(0.1)
             except Exception as e:
@@ -57,13 +55,13 @@ class ArduinoControl:
             print("Arduino is not connected.")
             return None
         try:
-            self.ser.reset_input_buffer() # 이전 수신 데이터가 남아있는 것을 방지
+            self.ser.reset_input_buffer()
             self.ser.write(command.encode('utf-8'))
             response = self.ser.readline().decode('utf-8', errors='ignore').strip()
             return response
         except serial.SerialException as e:
             print(f"Serial communication error with Arduino: {e}")
-            self.disconnect() # 통신 오류 발생 시 연결 해제
+            self.disconnect()
             return None
         except Exception as e:
             print(f"An error occurred: {e}")
@@ -80,25 +78,24 @@ class ArduinoControl:
     def get_temperature(self, channel):
         """
         지정된 채널의 온도 센서 값을 요청합니다.
-        channel (int): 0-3 사이의 센서 채널 번호.
+        channel (int): 0-4 사이의 센서 채널 번호.
         """
-        if not (0 <= channel <= 3):
-            print(f"Error: Invalid temperature channel {channel}. Must be 0-3.")
+        # *** FIX: 채널 범위를 5개(0-4)로 확장 ***
+        if not (0 <= channel <= 4):
+            print(f"Error: Invalid temperature channel {channel}. Must be 0-4.")
             return None
         
-        # 채널 번호(0-3)를 고유 명령어('a'-'d')로 변환
-        commands = ['a', 'b', 'c', 'd']
+        # *** FIX: 명령어 리스트에 'e' 추가 ***
+        commands = ['a', 'b', 'c', 'd', 'e']
         command = commands[channel]
         
         response = self._send_command(command)
         
         if response is None:
-            return None # 통신 실패
+            return None
             
         try:
-            # 아두이노에서 "24.57"과 같은 문자열로 응답하므로 float으로 변환
             return float(response)
         except (ValueError, TypeError):
-            # 숫자로 변환할 수 없는 응답 (예: "Sensor_Error")이 올 경우 오류 처리
             print(f"Could not parse temperature from Arduino for channel {channel}. Response: '{response}'")
             return None
