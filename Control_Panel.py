@@ -445,13 +445,13 @@ class MainWindow(QMainWindow):
         if self.is_arduino_connected:
             self.arduino_instance.open_relay()
             self.arduino_relay_state = "OPEN"
-            self._arduino_display_message("밸브 열림", False, 3000)
+            self._arduino_display_message("밸브 닫힘", False, 3000)
 
     def handle_close_relay(self):
         if self.is_arduino_connected:
             self.arduino_instance.close_relay()
             self.arduino_relay_state = "CLOSE"
-            self._arduino_display_message("밸브 닫힘", False, 3000)
+            self._arduino_display_message("밸브 열림", False, 3000)
 
     def update_arduino_status(self):
         if self.is_arduino_connected:
