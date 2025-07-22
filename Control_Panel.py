@@ -92,7 +92,7 @@ class MainWindow(QMainWindow):
         self.auto_flow_timer.timeout.connect(self._auto_update_flow_rate)
         self.power_meter_update_timer.timeout.connect(self.update_power_meter_status)
         self.arduino_update_timer.timeout.connect(self.update_arduino_status)
-        self.valve_close_timer.timeout.connect(self.handle_close_relay)
+        self.valve_close_timer.timeout.connect(self.handle_close_valve)
         self.clock_timer.timeout.connect(self._update_clock)
         self.set_log_path_button.clicked.connect(self._handle_set_log_path)
         self.master_toggle_logging_button.clicked.connect(self.handle_toggle_logging)
@@ -102,8 +102,8 @@ class MainWindow(QMainWindow):
         self.auto_browse_csv_dir_button.clicked.connect(self._auto_browse_csv_dir)
         self.auto_toggle_control_button.clicked.connect(self._toggle_auto_control)
         self.arduino_connect_button.clicked.connect(self.handle_connect_arduino)
-        self.relay_open_button.clicked.connect(self.handle_open_relay)
-        self.relay_close_button.clicked.connect(self.handle_close_relay)
+        self.valve_open_button.clicked.connect(self.handle_open_valve)
+        self.valve_close_button.clicked.connect(self.handle_close_valve)
         self.pm_connect_button.clicked.connect(self.handle_connect_power_meter)
         self.pump_a_widget.connection_status_changed.connect(self._update_master_pump_buttons_state)
         self.pump_b_widget.connection_status_changed.connect(self._update_master_pump_buttons_state)
@@ -181,10 +181,10 @@ class MainWindow(QMainWindow):
             is_new_cycle = (current_cycle != self.valve_last_triggered_cycle)
 
             if is_charge_step and is_target_cycle and is_new_cycle:
-                self.handle_open_relay()
+                self.handle_open_valve()
                 self.valve_last_triggered_cycle = current_cycle
                 self.valve_close_timer.start(int(duration_min * 60 * 1000))
-                self._arduino_display_message(f"Cycle {current_cycle}: Auto-opening relay for {duration_min} min.")
+                self._arduino_display_message(f"Cycle {current_cycle}: Auto-opening valve for {duration_min} min.")
         except (ValueError, TypeError):
             pass
 
@@ -429,33 +429,33 @@ class MainWindow(QMainWindow):
                 self.is_arduino_connected = True
                 self.arduino_status_label.setText("Status: Connected"); self.arduino_status_label.setStyleSheet("font-weight: bold; color: green;")
                 self.arduino_port_edit.setEnabled(False); self.arduino_connect_button.setText("Disconnect")
-                self.relay_open_button.setEnabled(True); self.relay_close_button.setEnabled(True)
+                self.valve_open_button.setEnabled(True); self.valve_close_button.setEnabled(True)
                 self.arduino_update_timer.start(self.arduino_update_interval)
-                self.handle_close_relay()
+                self.handle_close_valve()
             else:
                 self._arduino_display_message(f"Failed to connect to Arduino on {port}.", True, 5000); self.arduino_instance = None
         else:
             self.arduino_update_timer.stop()
-            if self.is_arduino_connected: self.handle_close_relay()
+            if self.is_arduino_connected: self.handle_close_valve()
             if self.arduino_instance: self.arduino_instance.disconnect()
             self.is_arduino_connected = False; self.arduino_instance = None
             self.arduino_status_label.setText("Status: Disconnected"); self.arduino_status_label.setStyleSheet("font-weight: bold; color: red;")
             self.arduino_port_edit.setEnabled(True); self.arduino_connect_button.setText("Connect")
-            self.relay_open_button.setEnabled(False); self.relay_close_button.setEnabled(False)
-            self.arduino_relay_state = "UNKNOWN"
+            self.valve_open_button.setEnabled(False); self.valve_close_button.setEnabled(False)
+            self.valve_state = "UNKNOWN"
             for label in self.temp_display_labels: label.setText(label.text().split(':')[0] + ": N/A")
 
-    def handle_open_relay(self):
+    def handle_open_valve(self):
         if self.is_arduino_connected:
-            self.arduino_instance.open_relay()
-            self.arduino_relay_state = "OPEN"
-            self._arduino_display_message("밸브 닫힘", False, 3000)
+            self.arduino_instance.open_valve()
+            self.valve_state = "OPEN"
+            self._arduino_display_message("Valve Opened", False, 3000)
 
-    def handle_close_relay(self):
+    def handle_close_valve(self):
         if self.is_arduino_connected:
-            self.arduino_instance.close_relay()
-            self.arduino_relay_state = "CLOSE"
-            self._arduino_display_message("밸브 열림", False, 3000)
+            self.arduino_instance.close_valve()
+            self.valve_state = "CLOSE"
+            self._arduino_display_message("Valve Closed", False, 3000)
 
     def update_arduino_status(self):
         if self.is_arduino_connected:
@@ -504,7 +504,7 @@ class MainWindow(QMainWindow):
         
         if self.is_power_meter_connected: self.power_meter_instance.disconnect()
         if self.is_arduino_connected:
-            self.handle_close_relay()
+            self.handle_close_valve()
             self.arduino_instance.disconnect()
         
         self.status_update_timer.stop(); self.logging_timer.stop(); self.clock_timer.stop()

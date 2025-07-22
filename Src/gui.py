@@ -339,13 +339,14 @@ class MainWindowUI:
         MainWindow.arduino_status_label.setStyleSheet("font-weight: bold; color: red;")
         arduino_layout.addWidget(MainWindow.arduino_status_label, 0, 3)
         relay_button_layout = QHBoxLayout()
-        MainWindow.relay_open_button = QPushButton("Valve Open")
-        MainWindow.relay_open_button.setEnabled(False)
-        MainWindow.relay_close_button = QPushButton("Valve Close")
-        MainWindow.relay_close_button.setEnabled(False)
-        relay_button_layout.addWidget(MainWindow.relay_open_button)
-        relay_button_layout.addWidget(MainWindow.relay_close_button)
+        MainWindow.valve_open_button = QPushButton("Valve Open")
+        MainWindow.valve_open_button.setEnabled(False)
+        MainWindow.valve_close_button = QPushButton("Valve Close")
+        MainWindow.valve_close_button.setEnabled(False)
+        relay_button_layout.addWidget(MainWindow.valve_open_button)
+        relay_button_layout.addWidget(MainWindow.valve_close_button)
         arduino_layout.addLayout(relay_button_layout, 1, 0, 1, 4)
+        
         
         # [UI 수정] 릴레이 자동 제어판 UI 구조 변경
         valve_group = QGroupBox("Rebalancing Valve (Charge Step Only)")
