@@ -26,12 +26,12 @@ DEFAULT_LOG_PATH = os.path.join(BASE_DIR, "log")
 if not os.path.exists(DEFAULT_LOG_PATH):
     os.makedirs(DEFAULT_LOG_PATH)
 DEFAULT_PUMP_CONFIGS = {
-    "Pump_A": {"port": "COM6", "address": "00", "model": "SIMDOS10", "flow_rate": "30000"},
-    "Pump_B": {"port": "COM7", "address": "00", "model": "SIMDOS10", "flow_rate": "30000"}
+    "Pump_A": {"port": "COM3", "address": "00", "model": "SIMDOS10", "flow_rate": "30000"},
+    "Pump_B": {"port": "COM4", "address": "00", "model": "SIMDOS10", "flow_rate": "30000"}
 }
 DEFAULT_POWER_METER_PORT = 'COM5'
 DEFAULT_AUTO_CSV_DIR = r"C:\Users\ECHEM\Desktop\Oscar\Backup"
-DEFAULT_ARDUINO_PORT = 'COM4'
+DEFAULT_ARDUINO_PORT = 'COM8'
 FARADAY_CONSTANT, GAS_CONSTANT_R = 96485.3, 8.314472
 ELECTROLYTE_CONCENTRATION_MOLAR = 1.7
 ELECTROLYTE_CONCENTRATION_MOL_PER_UL = ELECTROLYTE_CONCENTRATION_MOLAR * 1E-6
@@ -348,7 +348,7 @@ class MainWindow(QMainWindow):
         self.log_writer.writerow(data_row)
         
     def _update_master_logging_ui(self):
-        self.master_toggle_logging_button.setText("Stop Logging" if self.is_logging_active else "Start Logging")
+        self.master_toggle_logging_button.setText("Record OFF" if self.is_logging_active else "Record ON")
         widgets_to_toggle = [self.set_log_path_button, self.log_interval_edit]
         for widget in widgets_to_toggle: widget.setEnabled(not self.is_logging_active)
         self.pm_logging_status_label.setText(f"Logging: {'Active' if self.is_logging_active and self.is_power_meter_connected else 'Inactive'}")
@@ -454,13 +454,13 @@ class MainWindow(QMainWindow):
         if self.is_arduino_connected:
             self.arduino_instance.open_relay()
             self.arduino_relay_state = "OPEN"
-            self._arduino_display_message("Relay Opened", False, 3000)
+            self._arduino_display_message("밸브 열림", False, 3000)
 
     def handle_close_relay(self):
         if self.is_arduino_connected:
             self.arduino_instance.close_relay()
             self.arduino_relay_state = "CLOSE"
-            self._arduino_display_message("Relay Closed", False, 3000)
+            self._arduino_display_message("밸브 닫힘", False, 3000)
 
     def update_arduino_status(self):
         if self.is_arduino_connected:
