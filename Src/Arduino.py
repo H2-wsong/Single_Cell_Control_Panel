@@ -18,17 +18,18 @@ class ArduinoControl:
         """아두이노와 시리얼 포트 연결을 시도합니다."""
         try:
             self.ser = serial.Serial(self.port, self.baudrate, timeout=self.timeout)
-            time.sleep(2)
+            time.sleep(2) # 아두이노가 리셋 후 안정화될 시간을 줍니다.
             if self.ser.is_open:
                 self.is_connected = True
                 print(f"Successfully connected to Arduino on {self.port}.")
+                # 아두이노로부터 "Ready" 신호를 기다립니다.
                 ready_msg = self.ser.readline().decode('utf-8', errors='ignore').strip()
                 if "Ready" in ready_msg:
                     print(f"Arduino says: {ready_msg}")
                     return True
                 else:
                     print(f"Warning: Arduino did not send ready signal. Received: {ready_msg}")
-                    return True
+                    return True # 연결은 되었으므로 True를 반환할 수 있습니다.
         except serial.SerialException as e:
             print(f"Error connecting to Arduino on {self.port}: {e}")
             self.ser = None
@@ -39,14 +40,8 @@ class ArduinoControl:
     def disconnect(self):
         """아두이노와의 연결을 해제합니다."""
         if self.ser and self.ser.is_open:
-            try:
-                self.close_relay()
-                time.sleep(0.1)
-            except Exception as e:
-                print(f"Error while setting relay to default state on disconnect: {e}")
-            finally:
-                self.ser.close()
-                print("Disconnected from Arduino.")
+            self.ser.close()
+            print("Disconnected from Arduino.")
         self.is_connected = False
 
     def _send_command(self, command):
@@ -67,25 +62,23 @@ class ArduinoControl:
             print(f"An error occurred: {e}")
             return None
 
-def open_relay(self):
-    """릴레이를 켜는(밸브 열림) 명령 '1'을 전송합니다."""
-    return self._send_command('1')
+    def open_relay(self):
+        """릴레이를 비활성화(HIGH 신호)하여 NC 밸브를 엽니다. 명령 '1'을 전송합니다."""
+        return self._send_command('1')
 
-def close_relay(self):
-    """릴레이를 끄는(밸브 닫힘) 명령 '0'을 전송합니다."""
-    return self._send_command('0')
+    def close_relay(self):
+        """릴레이를 활성화(LOW 신호)하여 NC 밸브를 닫습니다. 명령 '0'을 전송합니다."""
+        return self._send_command('0')
 
     def get_temperature(self, channel):
         """
         지정된 채널의 온도 센서 값을 요청합니다.
         channel (int): 0-4 사이의 센서 채널 번호.
         """
-        # *** FIX: 채널 범위를 5개(0-4)로 확장 ***
         if not (0 <= channel <= 4):
             print(f"Error: Invalid temperature channel {channel}. Must be 0-4.")
             return None
         
-        # *** FIX: 명령어 리스트에 'e' 추가 ***
         commands = ['a', 'b', 'c', 'd', 'e']
         command = commands[channel]
         
@@ -97,5 +90,6 @@ def close_relay(self):
         try:
             return float(response)
         except (ValueError, TypeError):
+            # 아두이노가 'Sensor_Error' 같은 텍스트를 보내면 이 메시지가 출력됩니다.
             print(f"Could not parse temperature from Arduino for channel {channel}. Response: '{response}'")
             return None
