@@ -62,13 +62,13 @@ class ArduinoControl:
             print(f"An error occurred: {e}")
             return None
 
-    def open_relay(self):
-        """릴레이를 비활성화(HIGH 신호)하여 NC 밸브를 엽니다. 명령 '1'을 전송합니다."""
-        return self._send_command('1')
-
-    def close_relay(self):
-        """릴레이를 활성화(LOW 신호)하여 NC 밸브를 닫습니다. 명령 '0'을 전송합니다."""
+    def open_valve(self):
+        """릴레이를 활성화(LOW 신호)하여 NC 밸브를 엽니다. 명령 '0'을 전송합니다."""
         return self._send_command('0')
+
+    def close_valve(self):
+        """릴레이를 비활성화(HIGH 신호)하여 NC 밸브를 닫습니다. 명령 '1'을 전송합니다."""
+        return self._send_command('1')
 
     def get_temperature(self, channel):
         """
