@@ -72,7 +72,7 @@ class MainWindow(QMainWindow):
         self.is_power_meter_connected, self.is_arduino_connected = False, False
         self.is_logging_active, self.auto_flow_control_active = False, False
         self.log_file, self.log_writer = None, None
-        self.arduino_relay_state = "UNKNOWN"
+        self.valve_state = "UNKNOWN"
         self.log_path = self.DEFAULT_LOG_PATH
         self.latest_temperatures = [None] * 5
         
@@ -330,7 +330,7 @@ class MainWindow(QMainWindow):
                 filepath = os.path.join(self.log_path, f"Log_{time_str}.csv")
                 self.log_file = open(filepath, 'w', newline='', encoding='utf-8')
                 self.log_writer = csv.writer(self.log_file)
-                self.log_writer.writerow(['Timestamp', 'PumpA_FlowRate_ul_min', 'PumpA_Mode', 'PumpB_FlowRate_ul_min', 'PumpB_Mode', 'PM_Voltage_V', 'PM_Current_A', 'PM_Power_W', 'PM_Energy_Wh', 'Arduino_Relay_State', 'Temp_A0_C', 'Temp_A1_C', 'Temp_A2_C', 'Temp_A3_C', 'Temp_A4_C'])
+                self.log_writer.writerow(['Timestamp', 'PumpA_FlowRate_ul_min', 'PumpA_Mode', 'PumpB_FlowRate_ul_min', 'PumpB_Mode', 'PM_Voltage_V', 'PM_Current_A', 'PM_Power_W', 'PM_Energy_Wh', 'Valve_State', 'Temp_A0_C', 'Temp_A1_C', 'Temp_A2_C', 'Temp_A3_C', 'Temp_A4_C'])
                 if self.is_power_meter_connected: self.power_meter_instance.start_energy_accumulation()
                 self.logging_timer.start(interval_sec * 1000)
                 self.is_logging_active = True
@@ -361,7 +361,7 @@ class MainWindow(QMainWindow):
             else: pm_v, pm_i, pm_p, pm_wh = "Err", "Err", "Err", "Err"
         relay_state, temps = "N/A", ["N/A"] * 5
         if self.is_arduino_connected:
-            relay_state = self.arduino_relay_state
+            relay_state = self.valve_state
             for i in range(5):
                 temp = self.arduino_instance.get_temperature(i)
                 temps[i] = f"{temp:.2f}" if temp is not None else "Error"
