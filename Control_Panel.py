@@ -17,7 +17,7 @@ try:
     from Src.PowerMeter_Control import GPM8213PowerMeter
     from Src.Arduino import ArduinoControl
 except ImportError as e:
-    print(f"필수 모듈 임포트 실패: {e}\nSrc 폴더와 그 안의 파일들이 올바르게 위치해 있는지 확인하세요.")
+    print(f"Failed to import required modules: {e}\nPlease ensure all files are in the 'Src' folder.")
     sys.exit()
 
 # --- 기본 상수 및 경로 설정 ---
@@ -26,12 +26,12 @@ DEFAULT_LOG_PATH = os.path.join(BASE_DIR, "log")
 if not os.path.exists(DEFAULT_LOG_PATH):
     os.makedirs(DEFAULT_LOG_PATH)
 DEFAULT_PUMP_CONFIGS = {
-    "Pump_A": {"port": "COM3", "address": "00", "model": "SIMDOS10", "flow_rate": "30000"},
-    "Pump_B": {"port": "COM4", "address": "00", "model": "SIMDOS10", "flow_rate": "30000"}
+    "Pump_A": {"port": "COM6", "address": "00", "model": "SIMDOS10", "flow_rate": "30000"},
+    "Pump_B": {"port": "COM7", "address": "00", "model": "SIMDOS10", "flow_rate": "30000"}
 }
 DEFAULT_POWER_METER_PORT = 'COM5'
 DEFAULT_AUTO_CSV_DIR = r"C:\Users\ECHEM\Desktop\Oscar\Backup"
-DEFAULT_ARDUINO_PORT = 'COM8'
+DEFAULT_ARDUINO_PORT = 'COM4'
 FARADAY_CONSTANT, GAS_CONSTANT_R = 96485.3, 8.314472
 ELECTROLYTE_CONCENTRATION_MOLAR = 1.7
 ELECTROLYTE_CONCENTRATION_MOL_PER_UL = ELECTROLYTE_CONCENTRATION_MOLAR * 1E-6
@@ -62,6 +62,7 @@ class MainWindow(QMainWindow):
         self._update_master_pump_buttons_state()
         self._update_master_logging_ui()
         
+        # 타이머 시작
         self._start_status_timer()
         self.clock_timer.start(1000)
 
@@ -137,7 +138,8 @@ class MainWindow(QMainWindow):
 
     def _update_main_status_display(self):
         """최상단 상태 패널을 주기적으로 업데이트하고, 릴레이 자동 제어 조건을 확인합니다."""
-        dir_path, channel_str = self.auto_csv_dir_edit.text(), self.auto_channel_no_combo.currentText()
+        dir_path = self.auto_csv_dir_edit.text()
+        channel_str = self.status_channel_combo.currentText()
         latest_file = self._find_latest_csv_file(dir_path, channel_str)
         if not latest_file:
             self.status_channel_label.setText("Channel : File not found")
@@ -157,7 +159,6 @@ class MainWindow(QMainWindow):
                     self.status_channel_label.setText(f"Channel : {ch_val}")
                     self.status_cycle_label.setText(f"Cycle Number : {cycle_val}")
                     self.status_step_label.setText(f"Step : {step_val}")
-                    # 상태 정보를 읽은 후, 릴레이 자동 제어 로직을 호출합니다.
                     self._check_and_trigger_valve(cycle_val, step_val)
         except (ValueError, IndexError, FileNotFoundError):
             self.status_channel_label.setText("Channel : Error")
@@ -166,34 +167,29 @@ class MainWindow(QMainWindow):
             
     # --- 자동 제어 로직 (릴레이 및 유량) ---
     def _check_and_trigger_valve(self, current_cycle_str, current_step_str):
-        """현재 사이클과 스텝을 확인하여 릴레이(밸브) 작동 조건을 검사하고 실행합니다."""
         if not self.is_arduino_connected: return
         try:
             base_cycle, interval = int(self.valve_base_cycle_edit.text()), int(self.valve_interval_edit.text())
             duration_min, current_cycle = float(self.valve_duration_edit.text()), int(current_cycle_str)
             
-            # 조건 검사
             is_charge_step = "charge" in current_step_str.lower()
             is_target_cycle = (current_cycle >= base_cycle) and ((current_cycle - base_cycle) % interval == 0)
             is_new_cycle = (current_cycle != self.valve_last_triggered_cycle)
 
             if is_charge_step and is_target_cycle and is_new_cycle:
-                self.handle_open_relay() # 기존 릴레이 열기 함수 호출
+                self.handle_open_relay()
                 self.valve_last_triggered_cycle = current_cycle
                 self.valve_close_timer.start(int(duration_min * 60 * 1000))
                 self._arduino_display_message(f"Cycle {current_cycle}: Auto-opening relay for {duration_min} min.")
         except (ValueError, TypeError):
-            # UI에 입력된 값이 숫자가 아니면 조용히 무시
             pass
 
     def _auto_update_flow_rate(self):
-        """CSV파일의 최신 데이터를 기반으로 펌프의 유량을 자동으로 계산하고 설정합니다."""
         csv_dir, current_channel_str = self.auto_csv_dir_edit.text(), self.auto_channel_no_combo.currentText()
         current_mA, voltage_V_ocv = self._get_latest_value_from_csv(csv_dir, current_channel_str, "Current(mA)"), self._get_latest_avg_aux_voltage_from_csv(csv_dir, current_channel_str)
         if current_mA is None or voltage_V_ocv is None:
             self._auto_display_status_message("Could not read Current or Voltage from CSV.", True, 5000); return
         try:
-            # UI에서 제어 파라미터 읽기
             temp_indices = [self.temp_sensor_1_combo.currentIndex(), self.temp_sensor_2_combo.currentIndex()]
             temps = [self.arduino_instance.get_temperature(i) if self.is_arduino_connected else None for i in temp_indices]
             for i, temp_val in zip(temp_indices, temps):
@@ -201,18 +197,13 @@ class MainWindow(QMainWindow):
             valid_temps, avg_temp_c = [t for t in temps if t is not None], sum(valid_temps) / len(valid_temps) if valid_temps else 25.0
             self.avg_temp_display_label.setText(f"Avg Temp: {avg_temp_c:.2f} °C" if valid_temps else "Avg Temp: N/A (Default 25°C)")
             temp_k = avg_temp_c + 273.15
-            
             lambda_c, lambda_d = float(self.auto_lambda_c_edit.text()), float(self.auto_lambda_d_edit.text())
             n_cell, user_min_flow, user_max_flow = int(self.auto_n_cell_edit.text()), int(self.auto_min_flow_edit.text()), int(self.auto_max_flow_edit.text())
         except (ValueError, TypeError) as e:
             self._auto_display_status_message(f"Error: Invalid auto-control parameters. {e}", True, 5000); return
-        
-        # 유량 계산 및 펌프에 설정
         current_A, real_soc = current_mA / 1000.0, self._calculate_soc_from_nernst(voltage_V_ocv, temp_k)
-        selected_lambda = lambda_c if current_A >= 0 else lambda_d
-        calculated_flow = self._calculate_flow_ul_min(current_A, selected_lambda, n_cell, real_soc, current_A >= 0)
+        selected_lambda, calculated_flow = (lambda_c if current_A >= 0 else lambda_d), self._calculate_flow_ul_min(current_A, selected_lambda, n_cell, real_soc, current_A >= 0)
         flow_to_set = int(round(max(user_min_flow, min(calculated_flow, user_max_flow))))
-        
         for pump_widget in [self.pump_a_widget, self.pump_b_widget]:
             if pump_widget.connected:
                 pump_widget.pump_instance.set_mode(0)
@@ -220,7 +211,7 @@ class MainWindow(QMainWindow):
                 pump_widget.pump_instance.start_pump()
                 pump_widget.update_pump_status()
         self._auto_display_status_message(f"I:{current_A:.3f}A, V_avg:{voltage_V_ocv:.3f}V -> SOC:{real_soc:.3f} -> Set Flow:{flow_to_set}µl/min", False, 10000)
-    
+        
     # --- 파일 처리 및 계산 헬퍼 함수 ---
     def _get_latest_value_from_csv(self, directory_path, channel_str, column_name):
         latest_file_path = self._find_latest_csv_file(directory_path, channel_str)
