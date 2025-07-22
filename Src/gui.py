@@ -2,7 +2,7 @@
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QLineEdit,
-    QPushButton, QGroupBox, QComboBox, QFormLayout, QApplication
+    QPushButton, QGroupBox, QComboBox, QFormLayout, QApplication, QCheckBox
 )
 from PyQt6.QtGui import QPalette, QColor, QFont
 from PyQt6.QtCore import QTimer, pyqtSignal, Qt
@@ -210,7 +210,6 @@ class MainWindowUI:
         MainWindow.setCentralWidget(main_widget)
         top_layout = QVBoxLayout(main_widget)
 
-        # --- 상단 제어판 (Status, Logging) ---
         top_control_layout = QHBoxLayout()
         status_group = QGroupBox("Status")
         status_layout = QGridLayout(status_group)
@@ -229,7 +228,7 @@ class MainWindowUI:
         status_layout.addWidget(QLabel("Monitoring Channel:"), 1, 0)
         MainWindow.status_channel_combo = QComboBox()
         MainWindow.status_channel_combo.addItems([str(i) for i in range(1, 9)])
-        MainWindow.status_channel_combo.setCurrentText("1")
+        MainWindow.status_channel_combo.setCurrentText("3")
         status_layout.addWidget(MainWindow.status_channel_combo, 1, 1)
 
         interval_layout = QHBoxLayout()
@@ -242,13 +241,13 @@ class MainWindowUI:
         interval_layout.addWidget(MainWindow.status_interval_set_button)
         status_layout.addLayout(interval_layout, 1, 2, 1, 4)
 
-        status_layout.addWidget(QLabel("충방전기 데이터 경로:"), 2, 0)
+        status_layout.addWidget(QLabel("CSV Data Directory:"), 2, 0)
         MainWindow.auto_csv_dir_edit = QLineEdit(MainWindow.DEFAULT_AUTO_CSV_DIR)
         status_layout.addWidget(MainWindow.auto_csv_dir_edit, 2, 1, 1, 4)
         MainWindow.auto_browse_csv_dir_button = QPushButton("Browse...")
         status_layout.addWidget(MainWindow.auto_browse_csv_dir_button, 2, 5)
 
-        logging_group = QGroupBox("Log")
+        logging_group = QGroupBox("Logging")
         logging_layout = QHBoxLayout(logging_group)
         MainWindow.set_log_path_button = QPushButton("Set Log Path")
         logging_layout.addWidget(MainWindow.set_log_path_button)
@@ -265,7 +264,6 @@ class MainWindowUI:
         top_control_layout.addWidget(logging_group, 1)
         top_layout.addLayout(top_control_layout)
 
-        # --- 펌프 제어판 ---
         pumps_group = QGroupBox("Pump Controls")
         pumps_main_layout = QVBoxLayout(pumps_group)
         master_buttons_layout = QHBoxLayout()
@@ -284,14 +282,13 @@ class MainWindowUI:
         pumps_main_layout.addLayout(pump_widgets_layout)
         top_layout.addWidget(pumps_group)
 
-        # --- 하단 그리드 레이아웃 ---
         bottom_grid_layout = QGridLayout()
         auto_flow_group = QGroupBox("Automatic Flow Control")
         auto_flow_layout = QGridLayout(auto_flow_group)
         auto_flow_layout.addWidget(QLabel("Ch. for Current (I):"), 0, 0)
         MainWindow.auto_channel_no_combo = QComboBox()
         MainWindow.auto_channel_no_combo.addItems([str(i) for i in range(1, 9)])
-        MainWindow.auto_channel_no_combo.setCurrentText("1")
+        MainWindow.auto_channel_no_combo.setCurrentText("3")
         auto_flow_layout.addWidget(MainWindow.auto_channel_no_combo, 0, 1)
         MainWindow.auto_toggle_control_button = QPushButton("Start Auto Control")
         auto_flow_layout.addWidget(MainWindow.auto_toggle_control_button, 0, 2, 1, 2)
@@ -326,11 +323,9 @@ class MainWindowUI:
         MainWindow.avg_temp_display_label = QLabel("Avg Temp: N/A")
         MainWindow.avg_temp_display_label.setStyleSheet(bold_style)
         auto_flow_layout.addWidget(MainWindow.avg_temp_display_label, 4, 3)
-        bottom_status_layout = QHBoxLayout()
         MainWindow.auto_control_status_label = QLabel("Status: Inactive.")
         MainWindow.auto_control_status_label.setStyleSheet("font-style: italic;")
-        bottom_status_layout.addWidget(MainWindow.auto_control_status_label)
-        auto_flow_layout.addLayout(bottom_status_layout, 5, 0, 1, 4)
+        auto_flow_layout.addWidget(MainWindow.auto_control_status_label, 5, 0, 1, 4)
         bottom_grid_layout.addWidget(auto_flow_group, 0, 0)
 
         arduino_group = QGroupBox("Arduino Control")
@@ -344,22 +339,32 @@ class MainWindowUI:
         MainWindow.arduino_status_label.setStyleSheet("font-weight: bold; color: red;")
         arduino_layout.addWidget(MainWindow.arduino_status_label, 0, 3)
         relay_button_layout = QHBoxLayout()
-        MainWindow.relay_open_button = QPushButton("Valve Close")
+        MainWindow.relay_open_button = QPushButton("Valve Open")
         MainWindow.relay_open_button.setEnabled(False)
-        MainWindow.relay_close_button = QPushButton("Valve Open")
+        MainWindow.relay_close_button = QPushButton("Valve Close")
         MainWindow.relay_close_button.setEnabled(False)
         relay_button_layout.addWidget(MainWindow.relay_open_button)
         relay_button_layout.addWidget(MainWindow.relay_close_button)
         arduino_layout.addLayout(relay_button_layout, 1, 0, 1, 4)
+        
+        # [UI 수정] 릴레이 자동 제어판 UI 구조 변경
         valve_group = QGroupBox("Rebalancing Valve (Charge Step Only)")
-        valve_layout = QFormLayout(valve_group)
+        valve_outer_layout = QVBoxLayout(valve_group)
+        MainWindow.valve_auto_toggle_checkbox = QCheckBox("Enable Rebalancing")
+        valve_outer_layout.addWidget(MainWindow.valve_auto_toggle_checkbox)
+        
+        MainWindow.valve_settings_container = QWidget() # 설정들을 담을 컨테이너
+        valve_form_layout = QFormLayout(MainWindow.valve_settings_container)
+        valve_form_layout.setContentsMargins(10, 5, 5, 5) # 들여쓰기 효과
         MainWindow.valve_base_cycle_edit = QLineEdit("1")
         MainWindow.valve_interval_edit = QLineEdit("5")
         MainWindow.valve_duration_edit = QLineEdit("1")
-        valve_layout.addRow("Base Cycle:", MainWindow.valve_base_cycle_edit)
-        valve_layout.addRow("Cycle Interval:", MainWindow.valve_interval_edit)
-        valve_layout.addRow("Open Duration (min):", MainWindow.valve_duration_edit)
+        valve_form_layout.addRow("Base Cycle:", MainWindow.valve_base_cycle_edit)
+        valve_form_layout.addRow("Cycle Interval:", MainWindow.valve_interval_edit)
+        valve_form_layout.addRow("Open Duration (min):", MainWindow.valve_duration_edit)
+        valve_outer_layout.addWidget(MainWindow.valve_settings_container)
         arduino_layout.addWidget(valve_group, 2, 0, 1, 4)
+        
         arduino_layout.addWidget(QLabel("Temperatures (°C):"), 3, 0)
         MainWindow.temp_display_labels = []
         temp_labels_layout = QHBoxLayout()

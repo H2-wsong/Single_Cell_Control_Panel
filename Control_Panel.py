@@ -167,7 +167,11 @@ class MainWindow(QMainWindow):
             
     # --- 자동 제어 로직 (릴레이 및 유량) ---
     def _check_and_trigger_valve(self, current_cycle_str, current_step_str):
-        if not self.is_arduino_connected: return
+        """현재 사이클과 스텝을 확인하여 릴레이(밸브) 작동 조건을 검사하고 실행합니다."""
+        # << 로직 수정 >> 자동 제어 기능이 활성화된 경우에만 실행
+        if not self.is_arduino_connected or not self.valve_auto_toggle_checkbox.isChecked():
+            return
+        
         try:
             base_cycle, interval = int(self.valve_base_cycle_edit.text()), int(self.valve_interval_edit.text())
             duration_min, current_cycle = float(self.valve_duration_edit.text()), int(current_cycle_str)
