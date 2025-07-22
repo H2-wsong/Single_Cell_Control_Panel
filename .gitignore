@@ -1,1 +1,37 @@
+# .gitignore
+
+# 1. 파이썬 가상환경 폴더
+# venv, env 등 일반적인 가상환경 폴더 이름을 무시합니다.
+venv/
+env/
+.venv/
+.env/
+ENV/
+
+# 2. 파이썬 캐시 및 컴파일 파일
+# 실행 시 자동으로 생성되는 파이썬 캐시 파일을 무시합니다.
+__pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# 3. PyInstaller 빌드 결과물
+# .exe 파일 생성 시 만들어지는 폴더와 파일을 무시합니다.
+dist/
+build/
+*.spec
+
+# 4. IDE 및 에디터 설정 파일
+# VSCode, PyCharm 등 개발 도구의 설정 파일을 무시합니다.
+.vscode/
+.idea/
+*.swp
+
+# 5. 애플리케이션 생성 파일
+# 프로그램 실행 중 생성되는 로그 폴더를 무시합니다.
+log/
+
+# 6. 운영체제 관련 파일
+# Windows, macOS 등에서 자동으로 생성되는 시스템 파일을 무시합니다.
+.DS_Store
+Thumbs.db
