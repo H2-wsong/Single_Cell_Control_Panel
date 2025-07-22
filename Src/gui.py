@@ -228,7 +228,7 @@ class MainWindowUI:
         status_layout.addWidget(QLabel("Monitoring Channel:"), 1, 0)
         MainWindow.status_channel_combo = QComboBox()
         MainWindow.status_channel_combo.addItems([str(i) for i in range(1, 9)])
-        MainWindow.status_channel_combo.setCurrentText("3")
+        MainWindow.status_channel_combo.setCurrentText("1")
         status_layout.addWidget(MainWindow.status_channel_combo, 1, 1)
 
         interval_layout = QHBoxLayout()
@@ -288,7 +288,7 @@ class MainWindowUI:
         auto_flow_layout.addWidget(QLabel("Ch. for Current (I):"), 0, 0)
         MainWindow.auto_channel_no_combo = QComboBox()
         MainWindow.auto_channel_no_combo.addItems([str(i) for i in range(1, 9)])
-        MainWindow.auto_channel_no_combo.setCurrentText("3")
+        MainWindow.auto_channel_no_combo.setCurrentText("1")
         auto_flow_layout.addWidget(MainWindow.auto_channel_no_combo, 0, 1)
         MainWindow.auto_toggle_control_button = QPushButton("Start Auto Control")
         auto_flow_layout.addWidget(MainWindow.auto_toggle_control_button, 0, 2, 1, 2)
