@@ -26,12 +26,12 @@ DEFAULT_LOG_PATH = os.path.join(BASE_DIR, "log")
 if not os.path.exists(DEFAULT_LOG_PATH):
     os.makedirs(DEFAULT_LOG_PATH)
 DEFAULT_PUMP_CONFIGS = {
-    "Pump_A": {"port": "COM6", "address": "00", "model": "SIMDOS10", "flow_rate": "30000"},
-    "Pump_B": {"port": "COM7", "address": "00", "model": "SIMDOS10", "flow_rate": "30000"}
+    "Pump_A": {"port": "COM3", "address": "00", "model": "SIMDOS10", "flow_rate": "30000"},
+    "Pump_B": {"port": "COM4", "address": "00", "model": "SIMDOS10", "flow_rate": "30000"}
 }
 DEFAULT_POWER_METER_PORT = 'COM5'
 DEFAULT_AUTO_CSV_DIR = r"C:\Users\ECHEM\Desktop\Oscar\Backup"
-DEFAULT_ARDUINO_PORT = 'COM4'
+DEFAULT_ARDUINO_PORT = 'COM8'
 FARADAY_CONSTANT, GAS_CONSTANT_R = 96485.3, 8.314472
 ELECTROLYTE_CONCENTRATION_MOLAR = 1.7
 ELECTROLYTE_CONCENTRATION_MOL_PER_UL = ELECTROLYTE_CONCENTRATION_MOLAR * 1E-6
@@ -81,7 +81,7 @@ class MainWindow(QMainWindow):
         self.valve_close_timer, self.clock_timer = QTimer(self), QTimer(self)
         self.valve_close_timer.setSingleShot(True)
         
-        self.power_meter_update_interval, self.arduino_update_interval = 500, 2000
+        self.power_meter_update_interval, self.arduino_update_interval = 500, 500
         self.valve_last_triggered_cycle = -1
 
     def _connect_signals(self):
