@@ -47,7 +47,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Pump & Power Meter Controller")
+        self.setWindowTitle("Pump, Power Meter, Arduino Controller")
         icon_path = os.path.join(BASE_DIR, "Src", "logo.ico")
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
@@ -74,6 +74,7 @@ class MainWindow(QMainWindow):
         self.log_file, self.log_writer = None, None
         self.arduino_relay_state = "UNKNOWN"
         self.log_path = self.DEFAULT_LOG_PATH
+        self.latest_temperatures = [None] * 5
         
         # 타이머 인스턴스 생성
         self.status_update_timer, self.logging_timer, self.auto_flow_timer = QTimer(self), QTimer(self), QTimer(self)
@@ -189,18 +190,19 @@ class MainWindow(QMainWindow):
             pass
 
     def _auto_update_flow_rate(self):
+        """CSV파일의 최신 데이터를 기반으로 펌프의 유량을 자동으로 계산하고 설정합니다."""
         csv_dir, current_channel_str = self.auto_csv_dir_edit.text(), self.auto_channel_no_combo.currentText()
         current_mA, voltage_V_ocv = self._get_latest_value_from_csv(csv_dir, current_channel_str, "Current(mA)"), self._get_latest_avg_aux_voltage_from_csv(csv_dir, current_channel_str)
         if current_mA is None or voltage_V_ocv is None:
             self._auto_display_status_message("Could not read Current or Voltage from CSV.", True, 5000); return
         try:
             temp_indices = [self.temp_sensor_1_combo.currentIndex(), self.temp_sensor_2_combo.currentIndex()]
-            temps = [self.arduino_instance.get_temperature(i) if self.is_arduino_connected else None for i in temp_indices]
-            for i, temp_val in zip(temp_indices, temps):
-                self.temp_display_labels[i].setText(f"A{i}: {temp_val:.2f}" if temp_val is not None else f"A{i}: Error")
+            temps = [self.latest_temperatures[i] for i in temp_indices]
+
             valid_temps, avg_temp_c = [t for t in temps if t is not None], sum(valid_temps) / len(valid_temps) if valid_temps else 25.0
-            self.avg_temp_display_label.setText(f"Avg Temp: {avg_temp_c:.2f} °C" if valid_temps else "Avg Temp: N/A (Default 25°C)")
+            self.avg_temp_display_label.setText(f"Avg Temp: {avg_temp_c:.2f} °C" if valid_temps else "Avg Temp: N/A")
             temp_k = avg_temp_c + 273.15
+            
             lambda_c, lambda_d = float(self.auto_lambda_c_edit.text()), float(self.auto_lambda_d_edit.text())
             n_cell, user_min_flow, user_max_flow = int(self.auto_n_cell_edit.text()), int(self.auto_min_flow_edit.text()), int(self.auto_max_flow_edit.text())
         except (ValueError, TypeError) as e:
@@ -215,7 +217,7 @@ class MainWindow(QMainWindow):
                 pump_widget.pump_instance.start_pump()
                 pump_widget.update_pump_status()
         self._auto_display_status_message(f"I:{current_A:.3f}A, V_avg:{voltage_V_ocv:.3f}V -> SOC:{real_soc:.3f} -> Set Flow:{flow_to_set}µl/min", False, 10000)
-        
+
     # --- 파일 처리 및 계산 헬퍼 함수 ---
     def _get_latest_value_from_csv(self, directory_path, channel_str, column_name):
         latest_file_path = self._find_latest_csv_file(directory_path, channel_str)
@@ -282,7 +284,6 @@ class MainWindow(QMainWindow):
             return lambda_val * (abs(current_A) * n_cell_val) / (FARADAY_CONSTANT * soc_term * ELECTROLYTE_CONCENTRATION_MOL_PER_UL) * 60.0
         except Exception: return 0
 
-    # ... (이하 모든 핸들러 및 나머지 메소드는 이전 답변과 동일) ...
     def _handle_set_log_path(self):
         directory = QFileDialog.getExistingDirectory(self, "Select Log Directory", self.log_path)
         if directory:
@@ -461,6 +462,7 @@ class MainWindow(QMainWindow):
         if self.is_arduino_connected:
             for i in range(5):
                 temp = self.arduino_instance.get_temperature(i)
+                self.latest_temperatures[i] = temp
                 self.temp_display_labels[i].setText(f"A{i}: {temp:.2f}" if temp is not None else f"A{i}: Error")
 
     def handle_connect_power_meter(self):
