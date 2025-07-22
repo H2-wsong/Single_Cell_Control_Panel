@@ -196,26 +196,47 @@ class MainWindow(QMainWindow):
         if current_mA is None or voltage_V_ocv is None:
             self._auto_display_status_message("Could not read Current or Voltage from CSV.", True, 5000); return
         try:
+            # 아두이노에 직접 요청하는 대신, 저장된 최신 온도 값을 사용합니다.
             temp_indices = [self.temp_sensor_1_combo.currentIndex(), self.temp_sensor_2_combo.currentIndex()]
             temps = [self.latest_temperatures[i] for i in temp_indices]
 
-            valid_temps, avg_temp_c = [t for t in temps if t is not None], sum(valid_temps) / len(valid_temps) if valid_temps else 25.0
+            # 유효한 온도 값만 필터링합니다.
+            valid_temps = [t for t in temps if t is not None]
+            # 유효한 값이 있을 때만 평균을 계산하고, 없으면 기본값(25)을 사용합니다.
+            avg_temp_c = sum(valid_temps) / len(valid_temps) if valid_temps else 25.0
+
+            # 유효한 값이 있을 때만 평균 온도를 표시하고, 없으면 'N/A'를 표시합니다.
             self.avg_temp_display_label.setText(f"Avg Temp: {avg_temp_c:.2f} °C" if valid_temps else "Avg Temp: N/A")
             temp_k = avg_temp_c + 273.15
-            
+
             lambda_c, lambda_d = float(self.auto_lambda_c_edit.text()), float(self.auto_lambda_d_edit.text())
             n_cell, user_min_flow, user_max_flow = int(self.auto_n_cell_edit.text()), int(self.auto_min_flow_edit.text()), int(self.auto_max_flow_edit.text())
         except (ValueError, TypeError) as e:
             self._auto_display_status_message(f"Error: Invalid auto-control parameters. {e}", True, 5000); return
+
         current_A, real_soc = current_mA / 1000.0, self._calculate_soc_from_nernst(voltage_V_ocv, temp_k)
-        selected_lambda, calculated_flow = (lambda_c if current_A >= 0 else lambda_d), self._calculate_flow_ul_min(current_A, selected_lambda, n_cell, real_soc, current_A >= 0)
+        selected_lambda = lambda_c if current_A >= 0 else lambda_d
+        calculated_flow = self._calculate_flow_ul_min(current_A, selected_lambda, n_cell, real_soc, current_A >= 0)
         flow_to_set = int(round(max(user_min_flow, min(calculated_flow, user_max_flow))))
+
         for pump_widget in [self.pump_a_widget, self.pump_b_widget]:
             if pump_widget.connected:
                 pump_widget.pump_instance.set_mode(0)
                 pump_widget.pump_instance.set_flow_rate_run_mode(flow_to_set)
-                pump_widget.pump_instance.start_pump()
+
+                status_str = pump_widget.pump_instance.get_pump_status(1)
+                is_running = False
+                if status_str and status_str not in ["ACK", "NACK", None]:
+                    try:
+                        is_running = (int(status_str) & 1) == 1
+                    except (ValueError, TypeError):
+                        pass
+
+                if not is_running:
+                    pump_widget.pump_instance.start_pump()
+
                 pump_widget.update_pump_status()
+
         self._auto_display_status_message(f"I:{current_A:.3f}A, V_avg:{voltage_V_ocv:.3f}V -> SOC:{real_soc:.3f} -> Set Flow:{flow_to_set}µl/min", False, 10000)
 
     # --- 파일 처리 및 계산 헬퍼 함수 ---
@@ -246,7 +267,10 @@ class MainWindow(QMainWindow):
                 for row in reader:
                     if len(row) > col_idx and row[col_idx]: last_row_data = row
                 if not last_row_data: return None
-                raw_str, parts = last_row_data[col_idx], raw_str.split(':')
+                
+                raw_str = last_row_data[col_idx]
+                parts = raw_str.split(':')
+
                 if len(parts) < 2: return None
                 val1_str, val2_str = parts[0].split(';')[-1].replace(']', ''), parts[1].split(';')[-1].replace(']', '')
                 return (float(val1_str) + float(val2_str)) / 2.0
@@ -278,7 +302,8 @@ class MainWindow(QMainWindow):
         except (ValueError, OverflowError): return 0.0
 
     def _calculate_flow_ul_min(self, current_A, lambda_val, n_cell_val, soc_val, is_charging):
-        safe_soc, soc_term = max(1e-5, min(1.0 - 1e-5, soc_val)), (1.0 - safe_soc) if is_charging else safe_soc
+        safe_soc = max(1e-5, min(1.0 - 1e-5, soc_val))
+        soc_term = (1.0 - safe_soc) if is_charging else safe_soc
         try:
             if abs(current_A) < 1e-9 or abs(soc_term) < 1e-9: return 0
             return lambda_val * (abs(current_A) * n_cell_val) / (FARADAY_CONSTANT * soc_term * ELECTROLYTE_CONCENTRATION_MOL_PER_UL) * 60.0
