@@ -67,13 +67,13 @@ class ArduinoControl:
             print(f"An error occurred: {e}")
             return None
 
-    def open_relay(self):
-        """릴레이를 켜는(열림) 명령 '0'을 전송합니다."""
-        return self._send_command('0')
+def open_relay(self):
+    """릴레이를 켜는(밸브 열림) 명령 '1'을 전송합니다."""
+    return self._send_command('1')
 
-    def close_relay(self):
-        """릴레이를 끄는(닫힘) 명령 '1'을 전송합니다."""
-        return self._send_command('1')
+def close_relay(self):
+    """릴레이를 끄는(밸브 닫힘) 명령 '0'을 전송합니다."""
+    return self._send_command('0')
 
     def get_temperature(self, channel):
         """
