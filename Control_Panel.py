@@ -12,10 +12,10 @@ from PyQt6.QtCore import QTimer, Qt
 from PyQt6.QtGui import QIcon, QPixmap
 
 try:
-    from Src.gui import MainWindowUI
-    from Src.Pump_Control import SimdosPump
-    from Src.PowerMeter_Control import GPM8213PowerMeter
-    from Src.Arduino import ArduinoControl
+    from Source.gui import MainWindowUI
+    from Source.Pump_Control import SimdosPump
+    from Source.PowerMeter_Control import GPM8213PowerMeter
+    from Source.Arduino import ArduinoControl
 except ImportError as e:
     print(f"Failed to import required modules: {e}\nPlease ensure all files are in the 'Src' folder.")
     sys.exit()
