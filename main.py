@@ -1,4 +1,4 @@
-# Control_Panel.py
+# main.py
 
 import sys
 import os
@@ -12,12 +12,15 @@ from PyQt6.QtCore import QTimer, Qt
 from PyQt6.QtGui import QIcon, QPixmap
 
 try:
-    from Src.gui import MainWindowUI
-    from Src.Pump_Control import SimdosPump
-    from Src.PowerMeter_Control import GPM8213PowerMeter
-    from Src.Arduino import ArduinoControl
+    # 경로가 올바른지 확인합니다.
+    from Source.gui import MainWindowUI
+    from Source.Pump_Control import SimdosPump
+    from Source.PowerMeter_Control import GPM8213PowerMeter
+    from Source.Arduino import ArduinoControl
 except ImportError as e:
-    print(f"Failed to import required modules: {e}\nPlease ensure all files are in the 'Src' folder.")
+    # 오류 발생 시 더 명확한 메시지를 출력합니다.
+    print(f"모듈 임포트 실패: {e}")
+    print("프로젝트 구조를 확인하세요. main.py와 Source 폴더가 같은 위치에 있어야 합니다.")
     sys.exit()
 
 # --- 기본 상수 및 경로 설정 ---
@@ -48,7 +51,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Pump, Power Meter, Arduino Controller")
-        icon_path = os.path.join(BASE_DIR, "Src", "logo.ico")
+        icon_path = os.path.join(BASE_DIR, "Source", "logo.ico")
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
 
@@ -111,7 +114,7 @@ class MainWindow(QMainWindow):
     
     # --- UI 업데이트 및 상태 관리 ---
     def _load_logo(self):
-        logo_path = os.path.join(BASE_DIR, "Src", "logo.ico")
+        logo_path = os.path.join(BASE_DIR, "Source", "logo.ico")
         if os.path.exists(logo_path):
             pixmap = QPixmap(logo_path)
             self.logo_label.setPixmap(pixmap.scaled(96, 96, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
@@ -169,7 +172,6 @@ class MainWindow(QMainWindow):
     # --- 자동 제어 로직 (릴레이 및 유량) ---
     def _check_and_trigger_valve(self, current_cycle_str, current_step_str):
         """현재 사이클과 스텝을 확인하여 릴레이(밸브) 작동 조건을 검사하고 실행합니다."""
-        # << 로직 수정 >> 자동 제어 기능이 활성화된 경우에만 실행
         if not self.is_arduino_connected or not self.valve_auto_toggle_checkbox.isChecked():
             return
         
@@ -196,16 +198,12 @@ class MainWindow(QMainWindow):
         if current_mA is None or voltage_V_ocv is None:
             self._auto_display_status_message("Could not read Current or Voltage from CSV.", True, 5000); return
         try:
-            # 아두이노에 직접 요청하는 대신, 저장된 최신 온도 값을 사용합니다.
             temp_indices = [self.temp_sensor_1_combo.currentIndex(), self.temp_sensor_2_combo.currentIndex()]
             temps = [self.latest_temperatures[i] for i in temp_indices]
 
-            # 유효한 온도 값만 필터링합니다.
             valid_temps = [t for t in temps if t is not None]
-            # 유효한 값이 있을 때만 평균을 계산하고, 없으면 기본값(25)을 사용합니다.
             avg_temp_c = sum(valid_temps) / len(valid_temps) if valid_temps else 25.0
 
-            # 유효한 값이 있을 때만 평균 온도를 표시하고, 없으면 'N/A'를 표시합니다.
             self.avg_temp_display_label.setText(f"Avg Temp: {avg_temp_c:.2f} °C" if valid_temps else "Avg Temp: N/A")
             temp_k = avg_temp_c + 273.15
 
@@ -239,7 +237,6 @@ class MainWindow(QMainWindow):
 
         self._auto_display_status_message(f"I:{current_A:.3f}A, V_avg:{voltage_V_ocv:.3f}V -> SOC:{real_soc:.3f} -> Set Flow:{flow_to_set}µl/min", False, 10000)
 
-    # --- 파일 처리 및 계산 헬퍼 함수 ---
     def _get_latest_value_from_csv(self, directory_path, channel_str, column_name):
         latest_file_path = self._find_latest_csv_file(directory_path, channel_str)
         if not latest_file_path: return None

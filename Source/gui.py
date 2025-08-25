@@ -139,7 +139,7 @@ class PumpControlWidget(QWidget):
     def handle_connect_pump(self):
         # 펌프 연결/해제 로직
         try:
-            from Src.Pump_Control import SimdosPump
+            from Source.Pump_Control import SimdosPump
         except ImportError:
             self.display_message("SimdosPump module not found.", is_error=True); return
 
