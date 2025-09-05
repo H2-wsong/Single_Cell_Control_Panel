@@ -62,11 +62,11 @@ class ArduinoControl:
 
     def open_valve(self):
         """릴레이를 활성화하여 밸브를 엽니다. 아두이노 명령 '1'을 전송"""
-        return self._send_command('1')
+        return self._send_command('0')
 
     def close_valve(self):
         """릴레이를 비활성화하여 밸브를 닫습니다. 아두이노 명령 '0'을 전송"""
-        return self._send_command('0')
+        return self._send_command('1')
 
     def get_priming_sensor_status(self):
         """프라이밍 센서 상태를 요청합니다. 아두이노 명령 'f'를 전송"""
