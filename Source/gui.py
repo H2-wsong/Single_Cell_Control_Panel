@@ -1,5 +1,3 @@
-# Src/gui.py
-
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QLineEdit,
     QPushButton, QGroupBox, QComboBox, QFormLayout, QApplication, QCheckBox
@@ -8,7 +6,6 @@ from PyQt6.QtGui import QPalette, QColor, QFont
 from PyQt6.QtCore import QTimer, pyqtSignal, Qt
 
 class PumpControlWidget(QWidget):
-    # 각 펌프 제어를 위한 독립적인 UI 위젯 클래스
     connection_status_changed = pyqtSignal(bool)
 
     def __init__(self, pump_name, default_config):
@@ -19,7 +16,6 @@ class PumpControlWidget(QWidget):
         self.connected = False
         self.current_mode_str = "N/A"
         
-        # UI 업데이트를 위한 타이머 설정
         self.update_timer = QTimer(self)
         self.update_timer.timeout.connect(self.update_pump_status)
         self.update_timer_interval = 500
@@ -28,7 +24,6 @@ class PumpControlWidget(QWidget):
         self._connect_handlers()
 
     def init_ui(self):
-        # UI 요소 생성 및 레이아웃 배치
         main_layout = QVBoxLayout(self)
         group_box = QGroupBox(self.pump_name)
         main_layout.addWidget(group_box)
@@ -84,7 +79,6 @@ class PumpControlWidget(QWidget):
         self._update_ui_for_connection_state()
 
     def _connect_handlers(self):
-        # 위젯 내부의 시그널-슬롯 연결
         self.connect_button.clicked.connect(self.handle_connect_pump)
         self.start_button.clicked.connect(self.handle_start_pump)
         self.stop_button.clicked.connect(self.handle_stop_pump)
@@ -99,7 +93,6 @@ class PumpControlWidget(QWidget):
         self.status_label.setPalette(palette)
 
     def _update_ui_for_connection_state(self):
-        # 연결 상태에 따라 UI 활성화/비활성화 및 텍스트 변경
         is_connected = self.connected
         self.port_edit.setEnabled(not is_connected)
         self.connect_button.setText("Disconnect" if is_connected else "Connect")
@@ -112,7 +105,6 @@ class PumpControlWidget(QWidget):
         self.message_label.setStyleSheet("color: red;" if is_error else "color: black;")
 
     def update_pump_status(self):
-        # 펌프의 현재 상태를 읽어와 UI에 표시
         if self.pump_instance and self.connected:
             mode_val_raw = self.pump_instance.get_mode()
             self.current_mode_str = mode_val_raw
@@ -139,7 +131,7 @@ class PumpControlWidget(QWidget):
     def handle_connect_pump(self):
         # 펌프 연결/해제 로직
         try:
-            from Src.Pump_Control import SimdosPump
+            from Source.Pump_Control import SimdosPump
         except ImportError:
             self.display_message("SimdosPump module not found.", is_error=True); return
 
@@ -293,16 +285,16 @@ class MainWindowUI:
         MainWindow.auto_toggle_control_button = QPushButton("Start Auto Control")
         auto_flow_layout.addWidget(MainWindow.auto_toggle_control_button, 0, 2, 1, 2)
         auto_flow_layout.addWidget(QLabel("MIN Flow Rate (µl/min):"), 1, 0)
-        MainWindow.auto_min_flow_edit = QLineEdit("2640")
+        MainWindow.auto_min_flow_edit = QLineEdit("3000")
         auto_flow_layout.addWidget(MainWindow.auto_min_flow_edit, 1, 1)
         auto_flow_layout.addWidget(QLabel("MAX Flow Rate (µl/min):"), 1, 2)
-        MainWindow.auto_max_flow_edit = QLineEdit("6540")
+        MainWindow.auto_max_flow_edit = QLineEdit("100000")
         auto_flow_layout.addWidget(MainWindow.auto_max_flow_edit, 1, 3)
         auto_flow_layout.addWidget(QLabel("Lambda Charge (λ_C):"), 2, 0)
-        MainWindow.auto_lambda_c_edit = QLineEdit("4.5")
+        MainWindow.auto_lambda_c_edit = QLineEdit("25")
         auto_flow_layout.addWidget(MainWindow.auto_lambda_c_edit, 2, 1)
         auto_flow_layout.addWidget(QLabel("Lambda Discharge (λ_D):"), 2, 2)
-        MainWindow.auto_lambda_d_edit = QLineEdit("4.5")
+        MainWindow.auto_lambda_d_edit = QLineEdit("25")
         auto_flow_layout.addWidget(MainWindow.auto_lambda_d_edit, 2, 3)
         auto_flow_layout.addWidget(QLabel("No. of Cells:"), 3, 0)
         MainWindow.auto_n_cell_edit = QLineEdit("1")
@@ -330,6 +322,7 @@ class MainWindowUI:
 
         arduino_group = QGroupBox("Arduino Control")
         arduino_layout = QGridLayout(arduino_group)
+
         arduino_layout.addWidget(QLabel("Arduino COM Port:"), 0, 0)
         MainWindow.arduino_port_edit = QLineEdit(MainWindow.DEFAULT_ARDUINO_PORT)
         arduino_layout.addWidget(MainWindow.arduino_port_edit, 0, 1)
@@ -338,25 +331,36 @@ class MainWindowUI:
         MainWindow.arduino_status_label = QLabel("Status: Disconnected")
         MainWindow.arduino_status_label.setStyleSheet("font-weight: bold; color: red;")
         arduino_layout.addWidget(MainWindow.arduino_status_label, 0, 3)
-        relay_button_layout = QHBoxLayout()
+
+        # --- Status Display ---
+        status_display_layout = QHBoxLayout()
+        MainWindow.valve_status_label = QLabel("Valve Status: UNKNOWN")
+        MainWindow.valve_status_label.setStyleSheet(bold_style)
+        MainWindow.priming_sensor_status_label = QLabel("Priming Sensor: N/A")
+        MainWindow.priming_sensor_status_label.setStyleSheet(bold_style)
+        status_display_layout.addWidget(MainWindow.valve_status_label)
+        status_display_layout.addStretch()
+        status_display_layout.addWidget(MainWindow.priming_sensor_status_label)
+        arduino_layout.addLayout(status_display_layout, 1, 0, 1, 4)
+
+        valve_manual_group = QGroupBox("Manual Valve Control")
+        relay_button_layout = QVBoxLayout(valve_manual_group)
         MainWindow.valve_open_button = QPushButton("Valve Open")
         MainWindow.valve_open_button.setEnabled(False)
         MainWindow.valve_close_button = QPushButton("Valve Close")
         MainWindow.valve_close_button.setEnabled(False)
         relay_button_layout.addWidget(MainWindow.valve_open_button)
         relay_button_layout.addWidget(MainWindow.valve_close_button)
-        arduino_layout.addLayout(relay_button_layout, 1, 0, 1, 4)
-        
-        
-        # [UI 수정] 릴레이 자동 제어판 UI 구조 변경
-        valve_group = QGroupBox("Rebalancing Valve (Charge Step Only)")
-        valve_outer_layout = QVBoxLayout(valve_group)
+        arduino_layout.addWidget(valve_manual_group, 2, 0, 1, 2)
+
+        valve_auto_group = QGroupBox("Rebalancing (Charge Step Only)")
+        valve_outer_layout = QVBoxLayout(valve_auto_group)
         MainWindow.valve_auto_toggle_checkbox = QCheckBox("Enable Rebalancing")
         valve_outer_layout.addWidget(MainWindow.valve_auto_toggle_checkbox)
         
-        MainWindow.valve_settings_container = QWidget() # 설정들을 담을 컨테이너
+        MainWindow.valve_settings_container = QWidget()
         valve_form_layout = QFormLayout(MainWindow.valve_settings_container)
-        valve_form_layout.setContentsMargins(10, 5, 5, 5) # 들여쓰기 효과
+        valve_form_layout.setContentsMargins(10, 5, 5, 5)
         MainWindow.valve_base_cycle_edit = QLineEdit("1")
         MainWindow.valve_interval_edit = QLineEdit("5")
         MainWindow.valve_duration_edit = QLineEdit("1")
@@ -364,7 +368,7 @@ class MainWindowUI:
         valve_form_layout.addRow("Cycle Interval:", MainWindow.valve_interval_edit)
         valve_form_layout.addRow("Open Duration (min):", MainWindow.valve_duration_edit)
         valve_outer_layout.addWidget(MainWindow.valve_settings_container)
-        arduino_layout.addWidget(valve_group, 2, 0, 1, 4)
+        arduino_layout.addWidget(valve_auto_group, 2, 2, 1, 2)
         
         arduino_layout.addWidget(QLabel("Temperatures (°C):"), 3, 0)
         MainWindow.temp_display_labels = []
@@ -374,6 +378,7 @@ class MainWindowUI:
             MainWindow.temp_display_labels.append(label)
             temp_labels_layout.addWidget(label)
         arduino_layout.addLayout(temp_labels_layout, 3, 1, 1, 3)
+        
         MainWindow.arduino_message_label = QLabel("")
         MainWindow.arduino_message_label.setWordWrap(True)
         arduino_layout.addWidget(MainWindow.arduino_message_label, 4, 0, 1, 4)

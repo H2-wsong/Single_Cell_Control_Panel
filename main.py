@@ -1,4 +1,4 @@
-# Control_Panel.py
+# main.py
 
 import sys
 import os
@@ -17,7 +17,7 @@ try:
     from Source.PowerMeter_Control import GPM8213PowerMeter
     from Source.Arduino import ArduinoControl
 except ImportError as e:
-    print(f"Failed to import required modules: {e}\nPlease ensure all files are in the 'Src' folder.")
+    print(f"모듈 임포트 실패: {e}")
     sys.exit()
 
 # --- 기본 상수 및 경로 설정 ---
@@ -26,8 +26,8 @@ DEFAULT_LOG_PATH = os.path.join(BASE_DIR, "log")
 if not os.path.exists(DEFAULT_LOG_PATH):
     os.makedirs(DEFAULT_LOG_PATH)
 DEFAULT_PUMP_CONFIGS = {
-    "Pump_A": {"port": "COM3", "address": "00", "model": "SIMDOS10", "flow_rate": "30000"},
-    "Pump_B": {"port": "COM4", "address": "00", "model": "SIMDOS10", "flow_rate": "30000"}
+    "Pump_A": {"port": "COM6", "address": "00", "model": "SIMDOS10", "flow_rate": "30000"},
+    "Pump_B": {"port": "COM7", "address": "00", "model": "SIMDOS10", "flow_rate": "30000"}
 }
 DEFAULT_POWER_METER_PORT = 'COM5'
 DEFAULT_AUTO_CSV_DIR = r"C:\Users\ECHEM\Desktop\Oscar\Backup"
@@ -48,7 +48,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Pump, Power Meter, Arduino Controller")
-        icon_path = os.path.join(BASE_DIR, "Src", "logo.ico")
+        icon_path = os.path.join(BASE_DIR, "Source", "logo.ico")
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
 
@@ -72,7 +72,10 @@ class MainWindow(QMainWindow):
         self.is_power_meter_connected, self.is_arduino_connected = False, False
         self.is_logging_active, self.auto_flow_control_active = False, False
         self.log_file, self.log_writer = None, None
+        
         self.valve_state = "UNKNOWN"
+        self.priming_sensor_state = "N/A"
+        
         self.log_path = self.DEFAULT_LOG_PATH
         self.latest_temperatures = [None] * 5
         
@@ -111,7 +114,7 @@ class MainWindow(QMainWindow):
     
     # --- UI 업데이트 및 상태 관리 ---
     def _load_logo(self):
-        logo_path = os.path.join(BASE_DIR, "Src", "logo.ico")
+        logo_path = os.path.join(BASE_DIR, "Source", "logo.ico")
         if os.path.exists(logo_path):
             pixmap = QPixmap(logo_path)
             self.logo_label.setPixmap(pixmap.scaled(96, 96, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
@@ -169,7 +172,6 @@ class MainWindow(QMainWindow):
     # --- 자동 제어 로직 (릴레이 및 유량) ---
     def _check_and_trigger_valve(self, current_cycle_str, current_step_str):
         """현재 사이클과 스텝을 확인하여 릴레이(밸브) 작동 조건을 검사하고 실행합니다."""
-        # << 로직 수정 >> 자동 제어 기능이 활성화된 경우에만 실행
         if not self.is_arduino_connected or not self.valve_auto_toggle_checkbox.isChecked():
             return
         
@@ -196,16 +198,12 @@ class MainWindow(QMainWindow):
         if current_mA is None or voltage_V_ocv is None:
             self._auto_display_status_message("Could not read Current or Voltage from CSV.", True, 5000); return
         try:
-            # 아두이노에 직접 요청하는 대신, 저장된 최신 온도 값을 사용합니다.
             temp_indices = [self.temp_sensor_1_combo.currentIndex(), self.temp_sensor_2_combo.currentIndex()]
             temps = [self.latest_temperatures[i] for i in temp_indices]
 
-            # 유효한 온도 값만 필터링합니다.
             valid_temps = [t for t in temps if t is not None]
-            # 유효한 값이 있을 때만 평균을 계산하고, 없으면 기본값(25)을 사용합니다.
             avg_temp_c = sum(valid_temps) / len(valid_temps) if valid_temps else 25.0
 
-            # 유효한 값이 있을 때만 평균 온도를 표시하고, 없으면 'N/A'를 표시합니다.
             self.avg_temp_display_label.setText(f"Avg Temp: {avg_temp_c:.2f} °C" if valid_temps else "Avg Temp: N/A")
             temp_k = avg_temp_c + 273.15
 
@@ -239,7 +237,6 @@ class MainWindow(QMainWindow):
 
         self._auto_display_status_message(f"I:{current_A:.3f}A, V_avg:{voltage_V_ocv:.3f}V -> SOC:{real_soc:.3f} -> Set Flow:{flow_to_set}µl/min", False, 10000)
 
-    # --- 파일 처리 및 계산 헬퍼 함수 ---
     def _get_latest_value_from_csv(self, directory_path, channel_str, column_name):
         latest_file_path = self._find_latest_csv_file(directory_path, channel_str)
         if not latest_file_path: return None
@@ -330,7 +327,13 @@ class MainWindow(QMainWindow):
                 filepath = os.path.join(self.log_path, f"Log_{time_str}.csv")
                 self.log_file = open(filepath, 'w', newline='', encoding='utf-8')
                 self.log_writer = csv.writer(self.log_file)
-                self.log_writer.writerow(['Timestamp', 'PumpA_FlowRate_ul_min', 'PumpA_Mode', 'PumpB_FlowRate_ul_min', 'PumpB_Mode', 'PM_Voltage_V', 'PM_Current_A', 'PM_Power_W', 'PM_Energy_Wh', 'Valve_State', 'Temp_A0_C', 'Temp_A1_C', 'Temp_A2_C', 'Temp_A3_C', 'Temp_A4_C'])
+                self.log_writer.writerow([
+                    'Timestamp', 'PumpA_FlowRate_ul_min', 'PumpA_Mode', 
+                    'PumpB_FlowRate_ul_min', 'PumpB_Mode', 'PM_Voltage_V', 
+                    'PM_Current_A', 'PM_Power_W', 'PM_Energy_Wh', 
+                    'Valve_State', 'Priming_Sensor_State', 
+                    'Temp_A0_C', 'Temp_A1_C', 'Temp_A2_C', 'Temp_A3_C', 'Temp_A4_C'
+                ])
                 if self.is_power_meter_connected: self.power_meter_instance.start_energy_accumulation()
                 self.logging_timer.start(interval_sec * 1000)
                 self.is_logging_active = True
@@ -359,13 +362,20 @@ class MainWindow(QMainWindow):
             readings = self.power_meter_instance.get_readings()
             if readings: pm_v, pm_i, pm_p, pm_wh = readings.get('voltage', 'Err'), readings.get('current', 'Err'), readings.get('power', 'Err'), readings.get('energy_wh', 'Err')
             else: pm_v, pm_i, pm_p, pm_wh = "Err", "Err", "Err", "Err"
-        relay_state, temps = "N/A", ["N/A"] * 5
+        
+        valve_state_log, priming_sensor_log, temps = "N/A", "N/A", ["N/A"] * 5
         if self.is_arduino_connected:
-            relay_state = self.valve_state
+            valve_state_log = self.valve_state
+            priming_sensor_log = self.priming_sensor_state
             for i in range(5):
-                temp = self.arduino_instance.get_temperature(i)
+                temp = self.latest_temperatures[i]
                 temps[i] = f"{temp:.2f}" if temp is not None else "Error"
-        data_row = [timestamp, pump_a_rate, pump_a_mode, pump_b_rate, pump_b_mode, pm_v, pm_i, pm_p, pm_wh, relay_state] + temps
+        
+        data_row = [
+            timestamp, pump_a_rate, pump_a_mode, pump_b_rate, pump_b_mode, 
+            pm_v, pm_i, pm_p, pm_wh, 
+            valve_state_log, priming_sensor_log
+        ] + temps
         self.log_writer.writerow(data_row)
         
     def _update_master_logging_ui(self):
@@ -457,7 +467,7 @@ class MainWindow(QMainWindow):
                 self.arduino_port_edit.setEnabled(False); self.arduino_connect_button.setText("Disconnect")
                 self.valve_open_button.setEnabled(True); self.valve_close_button.setEnabled(True)
                 self.arduino_update_timer.start(self.arduino_update_interval)
-                self.handle_close_valve()
+                self.handle_close_valve() # 연결 시 밸브를 닫힌 상태로 초기화
             else:
                 self._arduino_display_message(f"Failed to connect to Arduino on {port}.", True, 5000); self.arduino_instance = None
         else:
@@ -468,27 +478,44 @@ class MainWindow(QMainWindow):
             self.arduino_status_label.setText("Status: Disconnected"); self.arduino_status_label.setStyleSheet("font-weight: bold; color: red;")
             self.arduino_port_edit.setEnabled(True); self.arduino_connect_button.setText("Connect")
             self.valve_open_button.setEnabled(False); self.valve_close_button.setEnabled(False)
-            self.valve_state = "UNKNOWN"
+            self.valve_state = "UNKNOWN"; self.priming_sensor_state = "N/A"
+            self.valve_status_label.setText("Valve: UNKNOWN")
+            self.priming_sensor_status_label.setText("Priming Sensor: N/A")
             for label in self.temp_display_labels: label.setText(label.text().split(':')[0] + ": N/A")
 
     def handle_open_valve(self):
         if self.is_arduino_connected:
             self.arduino_instance.open_valve()
             self.valve_state = "OPEN"
+            self.valve_status_label.setText("Valve Status: OPEN")
+            self.valve_status_label.setStyleSheet("font-weight: bold; color: green;")
             self._arduino_display_message("Valve Opened", False, 3000)
 
     def handle_close_valve(self):
         if self.is_arduino_connected:
             self.arduino_instance.close_valve()
             self.valve_state = "CLOSE"
+            self.valve_status_label.setText("Valve Status: CLOSE")
+            self.valve_status_label.setStyleSheet("font-weight: bold; color: red;")
             self._arduino_display_message("Valve Closed", False, 3000)
 
     def update_arduino_status(self):
         if self.is_arduino_connected:
+            # Update temperatures
             for i in range(5):
                 temp = self.arduino_instance.get_temperature(i)
                 self.latest_temperatures[i] = temp
                 self.temp_display_labels[i].setText(f"A{i}: {temp:.2f}" if temp is not None else f"A{i}: Error")
+            
+            # Update priming sensor status
+            status = self.arduino_instance.get_priming_sensor_status()
+            self.priming_sensor_state = status if status else "Error"
+            self.priming_sensor_status_label.setText(f"Priming Sensor: {self.priming_sensor_state}")
+            if "Detected" in self.priming_sensor_state:
+                self.priming_sensor_status_label.setStyleSheet("font-weight: bold; color: blue;")
+            else:
+                self.priming_sensor_status_label.setStyleSheet("font-weight: bold; color: black;")
+
 
     def handle_connect_power_meter(self):
         if not self.is_power_meter_connected:

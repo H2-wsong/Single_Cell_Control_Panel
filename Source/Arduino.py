@@ -1,5 +1,3 @@
-# Src/Arduino.py
-
 import serial
 import time
 
@@ -47,7 +45,7 @@ class ArduinoControl:
     def _send_command(self, command):
         """아두이노로 명령을 보내고 응답을 읽습니다."""
         if not self.is_connected or not self.ser:
-            print("Arduino is not connected.")
+            # print("Arduino is not connected.") # This can be noisy
             return None
         try:
             self.ser.reset_input_buffer()
@@ -63,12 +61,19 @@ class ArduinoControl:
             return None
 
     def open_valve(self):
-        """릴레이를 활성화(LOW 신호)하여 NC 밸브를 엽니다. 명령 '0'을 전송합니다."""
-        return self._send_command('0')
+        """릴레이를 활성화하여 밸브를 엽니다. 아두이노 명령 '1'을 전송"""
+        return self._send_command('1')
 
     def close_valve(self):
-        """릴레이를 비활성화(HIGH 신호)하여 NC 밸브를 닫습니다. 명령 '1'을 전송합니다."""
-        return self._send_command('1')
+        """릴레이를 비활성화하여 밸브를 닫습니다. 아두이노 명령 '0'을 전송"""
+        return self._send_command('0')
+
+    def get_priming_sensor_status(self):
+        """프라이밍 센서 상태를 요청합니다. 아두이노 명령 'f'를 전송"""
+        response = self._send_command('f')
+        if response:
+            return response
+        return "Error"
 
     def get_temperature(self, channel):
         """
@@ -91,5 +96,5 @@ class ArduinoControl:
             return float(response)
         except (ValueError, TypeError):
             # 아두이노가 'Sensor_Error' 같은 텍스트를 보내면 이 메시지가 출력됩니다.
-            print(f"Could not parse temperature from Arduino for channel {channel}. Response: '{response}'")
+            # print(f"Could not parse temperature from Arduino for channel {channel}. Response: '{response}'")
             return None
